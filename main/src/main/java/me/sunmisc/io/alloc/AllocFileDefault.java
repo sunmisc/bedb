@@ -3,6 +3,7 @@ package me.sunmisc.io.alloc;
 import me.sunmisc.io.Location;
 import me.sunmisc.io.page.FilePage;
 import me.sunmisc.io.page.Page;
+import me.sunmisc.io.page.StripedPagedFile;
 
 import java.io.File;
 import java.io.IOException;
@@ -22,15 +23,15 @@ public final class AllocFileDefault implements Alloc {
         try (final FilePage header = new FilePage(this.file, offset, Integer.BYTES)) {
             header.writeInt(0, size);
         }
-        return new FilePage(this.file, offset + Integer.BYTES, size);
+        return new StripedPagedFile(this.file, offset + Integer.BYTES, size);
     }
 
     @Override
     public Page take(final Location location) throws IOException {
-        final long offset = location.offset();
+        final long offset = location.offset() - Integer.BYTES;
         try (final FilePage header = new FilePage(this.file, offset, Integer.BYTES)) {
             final int size = header.readInt(0);
-            return new FilePage(this.file, offset + Integer.BYTES, size);
+            return new StripedPagedFile(this.file, offset + Integer.BYTES, size);
         }
     }
 

@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @Warmup(iterations = 2, time = 1)
@@ -22,10 +23,12 @@ import java.util.concurrent.TimeUnit;
 @BenchmarkMode({Mode.Throughput})
 @State(Scope.Thread)
 public class HashTableBench {
-    private static final long SEED = 3423;
+    private static final long SEED = 34283;
     private static final int DEFAULT_CAPACITY = 128;
     private static final int SIZE = 100_000;
+    private static final int BOUND = SIZE >>> 2;
 
+    private @Param Spread spread;
     private Map<Integer, Integer> jdkHashMap;
     private List<Integer> keys;
 
@@ -38,7 +41,10 @@ public class HashTableBench {
 
     @Setup
     public void prepare() {
-        this.keys = new Random(SEED).ints(SIZE, 0, SIZE).boxed().toList();
+        this.keys = (spread == Spread.SEQ
+                ? IntStream.range(0, SIZE)
+                : new Random(SEED).ints(SIZE, 0, SIZE)
+        ).boxed().toList();
         this.jdkHashMap = this.keys
                 .stream()
                 .collect(
@@ -49,7 +55,7 @@ public class HashTableBench {
     }
 
     @OutputTimeUnit(TimeUnit.MILLISECONDS)
-    @Warmup(iterations = 2, time = 1)
+    @Warmup(iterations = 4)
     @Measurement(iterations = 8, time = 1)
     @Fork(1)
     @Threads(1)
@@ -59,11 +65,12 @@ public class HashTableBench {
         private static final String FILE_NAME = "bench.bin";
         private Table flatHashTable;
         private List<Integer> keys;
-        private @Param Mode mode;
+        private @Param Spread spread;
+        private @Param Storage storage;
 
         @Setup
         public void init() throws IOException {
-            final Alloc alloc = switch (this.mode) {
+            final Alloc alloc = switch (this.storage) {
                 case FILE -> {
                     final File file = new File(FILE_NAME);
                     file.delete();
@@ -71,7 +78,10 @@ public class HashTableBench {
                 }
                 case HEAP -> new AllocAlignedPage(new AllocHeapTable());
             };
-            this.keys = new Random(SEED).ints(SIZE, 0, SIZE).boxed().toList();
+            this.keys = (spread == Spread.SEQ
+                    ? IntStream.range(0, SIZE)
+                    : new Random(SEED).ints(SIZE, 0, SIZE)
+            ).boxed().toList();
             this.flatHashTable = new UnsignedIntHashTable(alloc, DEFAULT_CAPACITY);
             for (final int k : this.keys) {
                 this.flatHashTable.put(k, -k);
@@ -85,24 +95,25 @@ public class HashTableBench {
 
         @Benchmark
         public Optional<Integer> hashTableGet() throws IOException {
-            final int key = ThreadLocalRandom.current().nextInt(0, SIZE);
+            final int key = ThreadLocalRandom.current().nextInt(0, BOUND);
             return this.flatHashTable.get(key);
         }
 
         @Benchmark
         public int hashTablePut() throws IOException {
-            final int idx = ThreadLocalRandom.current().nextInt(0, SIZE);
+            final int idx = ThreadLocalRandom.current().nextInt(0, BOUND);
             final int key = this.keys.get(idx);
             this.flatHashTable.put(key, idx);
             return key;
         }
 
-        public enum Mode { FILE, HEAP }
+        public enum Storage { FILE, HEAP }
+
     }
 
     @Benchmark
     public int jdkHashMapPut() {
-        final int idx = ThreadLocalRandom.current().nextInt(0, SIZE);
+        final int idx = ThreadLocalRandom.current().nextInt(0, BOUND);
         final int key = this.keys.get(idx);
         this.jdkHashMap.put(key, idx);
         return key;
@@ -110,7 +121,8 @@ public class HashTableBench {
 
     @Benchmark
     public Optional<Integer> jdkHashMapGet() {
-        final int key = ThreadLocalRandom.current().nextInt(0, SIZE);
+        final int key = ThreadLocalRandom.current().nextInt(0, BOUND);
         return Optional.ofNullable(this.jdkHashMap.get(key));
     }
+    public enum Spread { SEQ, RAND }
 }

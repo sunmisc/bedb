@@ -7,7 +7,6 @@ import me.sunmisc.io.page.SegmentsPage;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.Vector;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.StampedLock;
 import java.util.stream.Collectors;
@@ -107,7 +106,7 @@ public final class IntVector implements Vector {
     @Override
     public Cursor<Integer> cursor() throws IOException {
         try {
-            return new IntCursor(this, this.get(0), 0);
+            return new IntCursor(this, this.get(0), 1);
         } catch (final IndexOutOfBoundsException ex) {
             return Cursor.empty();
         }

@@ -11,8 +11,8 @@ import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
 
 public final class UnsignedIntHashTable implements Table {
-    private static final int DEFAULT_CAPACITY = 128;
-    private static final float LOAD_FACTOR = 0.75F;
+    private static final int DEFAULT_CAPACITY = 256;
+    private static final float LOAD_FACTOR = 0.8F;
     private static final int NEED_FREE_SLOTS = 2;
 
     private final Alloc allocation;
@@ -106,8 +106,7 @@ public final class UnsignedIntHashTable implements Table {
     }
 
     private static int hash(final int h, final int length) {
-        // Multiply by -254 to use the hash LSB and to ensure index is even
-        return ((h << 1) - (h << 8)) & (length - 1);
+        return Math.floorMod(h, length >> 1) << 1;
     }
 
     private static int nextKeyIndex(final int i, final int len) {

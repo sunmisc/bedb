@@ -16,6 +16,15 @@ public final class AllocHeapTable implements Alloc {
 
     @Override
     public Page alloc(final int size) {
+        //          header
+        // +------------------------+
+        // | size                   |
+        // | segments [0..30]       |
+        // +------------------------+
+        //                  segments
+        // +---------------------------------------+
+        // | [16] [.32] [..64] [...128] [....256]  |
+        // +---------------------------------------+
         final long id = this.ids.getAndAdd(size);
         final Page page = new HeapPage(id, size);
         if (this.pages.putIfAbsent(id, page) != null) {
