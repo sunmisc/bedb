@@ -2,6 +2,7 @@ package sunmisc.io;
 
 import me.sunmisc.io.IntVector;
 import me.sunmisc.io.alloc.AllocAlignedPage;
+import me.sunmisc.io.alloc.AllocCachedPage;
 import me.sunmisc.io.alloc.AllocFileDefault;
 import me.sunmisc.io.alloc.AllocIntPage;
 import org.testng.Assert;
@@ -23,10 +24,12 @@ public class IntVectorTest {
     @BeforeTest
     public void setup() throws IOException {
         this.concurrent = new IntVector(
-                new AllocAlignedPage(
-                        new AllocIntPage(
-                                new AllocFileDefault(
-                                        new File("list.bin")
+                new AllocCachedPage(
+                        new AllocAlignedPage(
+                                new AllocIntPage(
+                                        new AllocFileDefault(
+                                                new File("list.bin")
+                                        )
                                 )
                         )
                 )
@@ -57,7 +60,6 @@ public class IntVectorTest {
                 this.concurrent.remove(0);
             }
         }
-        System.out.println(this.concurrent);
         Assert.assertEquals(
                 this.cow,
                 this.concurrent,

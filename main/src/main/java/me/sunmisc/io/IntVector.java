@@ -6,7 +6,9 @@ import me.sunmisc.io.page.Page;
 import me.sunmisc.io.page.SegmentsPage;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.StampedLock;
 import java.util.stream.Collectors;
@@ -14,22 +16,27 @@ import java.util.stream.StreamSupport;
 
 public final class IntVector implements Vector {
     private static final int SPINS = 1 << 5;
-    private static final int DEFAULT_CAPACITY = 16;
+    private static final int DEFAULT_CAPACITY = 64 * 2 ;
     // share
-    private final List<Page> down = new ArrayList<>(30);
+    private final List<Page> down;
     private final Alloc allocation;
     private final Page elements;
     private final AtomicInteger size = new AtomicInteger();
     private final StampedLock lock = new StampedLock();
 
     public IntVector(final Alloc allocation) throws IOException {
-        this(allocation, allocation.alloc(DEFAULT_CAPACITY));
+        this(allocation, allocation.alloc(31));
     }
 
-    public IntVector(final Alloc allocation, final Page first) {
+    public IntVector(final Alloc allocation, final Page first) throws IOException {
         this.allocation = allocation;
-        this.down.add(first);
+        this.down = new HeaderList(allocation, first);
+        down.add(allocation.alloc(DEFAULT_CAPACITY));
         this.elements = new SegmentsPage(this.down);
+    }
+
+    private int lastSize() {
+        return down.getLast().length();
     }
 
     @Override
@@ -41,7 +48,7 @@ public final class IntVector implements Vector {
             if (this.elements.length() <= index) {
                 this.down.add(
                         this.allocation.alloc(
-                                this.down.getLast().length() << 1
+                                lastSize() << 1
                         )
                 );
             }

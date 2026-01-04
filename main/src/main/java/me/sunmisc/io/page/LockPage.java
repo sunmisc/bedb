@@ -13,28 +13,28 @@ public final class LockPage implements AtomicPage {
     }
 
     @Override
-    public boolean casLong(final int index, final long expectedValue, final long newValue) throws IOException {
+    public long caeLong(final int index, final long expectedValue, final long newValue) throws IOException {
         this.lock.lock();
         try {
-            if (this.origin.readLong(index) == expectedValue) {
+            final long witness = this.origin.readLong(index);
+            if (witness == expectedValue) {
                 this.origin.writeLong(index, newValue);
-                return true;
             }
-            return false;
+            return witness;
         } finally {
             this.lock.unlock();
         }
     }
 
     @Override
-    public boolean casInt(final int index, final int expectedValue, final int newValue) throws IOException {
+    public int caeInt(final int index, final int expectedValue, final int newValue) throws IOException {
         this.lock.lock();
         try {
-            if (this.origin.readInt(index) == expectedValue) {
+            final int witness = this.origin.readInt(index);
+            if (witness == expectedValue) {
                 this.origin.writeInt(index, newValue);
-                return true;
             }
-            return false;
+            return witness;
         } finally {
             this.lock.unlock();
         }

@@ -11,7 +11,7 @@ import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 
 public final class StripedPagedFile implements Page, AutoCloseable {
-    private static final int PAGE_SIZE = 4096;
+    private static final int PAGE_SIZE = 4096 * 2;
     private final RandomAccessFile raf;
     private final long offset;
     private final int size;
@@ -21,8 +21,8 @@ public final class StripedPagedFile implements Page, AutoCloseable {
         this.raf = new RandomAccessFile(origin, "rw");
         this.cache = Caffeine
                 .newBuilder()
-                .weigher((Weigher<Integer, Page>) (key, value) -> value.length())
-                .maximumWeight(PAGE_SIZE * 32)
+                .weigher((Weigher<Integer, Page>) (_, value) -> value.length())
+                .maximumWeight(PAGE_SIZE * 20)
                 //.expireAfterAccess(Duration.ofMinutes(5))
                 .build(off -> {
                     final int len = off * PAGE_SIZE;

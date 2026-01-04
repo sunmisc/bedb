@@ -1,7 +1,5 @@
 package me.sunmisc.io;
 
-import me.sunmisc.io.page.Page;
-
 import java.io.IOException;
 import java.util.Optional;
 

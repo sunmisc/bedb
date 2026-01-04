@@ -37,6 +37,7 @@ public final class AllocHeapTable implements Alloc {
     public Page take(final Location offset) {
         return Objects.requireNonNull(this.pages.get(offset.offset()));
     }
+
     @Override
     public void free(final Location location) throws IOException {
         this.pages.remove(location.offset());

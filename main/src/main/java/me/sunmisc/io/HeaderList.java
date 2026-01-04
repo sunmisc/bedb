@@ -1,17 +1,21 @@
 package me.sunmisc.io;
 
 import me.sunmisc.io.alloc.Alloc;
+import me.sunmisc.io.alloc.AllocHeapTable;
+import me.sunmisc.io.alloc.AllocIntPage;
 import me.sunmisc.io.page.Page;
+import me.sunmisc.io.page.SegmentsPage;
 
 import java.io.IOException;
 import java.util.AbstractList;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public final class HeaderList extends AbstractList<Page> {
     private final Alloc alloc;
     private final Page header;
-    private final AtomicInteger position = new AtomicInteger();
+    private final Lock lock = new ReentrantLock();
 
     public HeaderList(final Alloc alloc, final Page header) {
         this.alloc = alloc;
@@ -19,10 +23,10 @@ public final class HeaderList extends AbstractList<Page> {
     }
 
     @Override
-    public Page get(int index) {
+    public Page get(final int index) {
         Objects.checkIndex(index, size());
         try {
-            final long offset = this.header.readLong(index);
+            final long offset = this.header.readLong((index << 1) + 1);
             return this.alloc.take(new Location.LongLocation(offset));
         } catch (final IOException ex) {
             throw new RuntimeException(ex);
@@ -30,18 +34,26 @@ public final class HeaderList extends AbstractList<Page> {
     }
 
     @Override
-    public boolean add(Page page) {
-        final int pos = position.getAndAdd(1);
+    public boolean add(final Page page) {
+        lock.lock();
         try {
-            header.writeLong(pos, page.offset());
+            final int pos = Math.max(header.readInt(0), 0);
+            header.writeLong((pos << 1) + 1, page.offset());
+            header.writeInt(0, pos + 1);
+            return true;
         } catch (final IOException ex) {
-            throw new RuntimeException(ex);
+            return false;
+        } finally {
+            lock.unlock();
         }
-        return true;
     }
 
     @Override
     public int size() {
-        return position.get();
+        try {
+            return header.readInt(0);
+        } catch (IOException e) {
+            return 0;
+        }
     }
 }

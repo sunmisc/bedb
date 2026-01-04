@@ -2,7 +2,10 @@ package sunmisc.io;
 
 import me.sunmisc.io.Table;
 import me.sunmisc.io.UnsignedIntHashTable;
-import me.sunmisc.io.alloc.*;
+import me.sunmisc.io.alloc.Alloc;
+import me.sunmisc.io.alloc.AllocAlignedPage;
+import me.sunmisc.io.alloc.AllocFileDefault;
+import me.sunmisc.io.alloc.AllocIntPage;
 import org.testng.Assert;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;

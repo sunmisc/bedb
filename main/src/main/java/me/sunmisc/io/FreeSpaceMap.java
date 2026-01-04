@@ -3,34 +3,39 @@ package me.sunmisc.io;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import me.sunmisc.io.alloc.Alloc;
-import me.sunmisc.io.alloc.AllocHeapTable;
+import me.sunmisc.io.alloc.AllocFileDefault;
+import me.sunmisc.io.alloc.AllocIntPage;
+import me.sunmisc.io.page.AtomicPage;
+import me.sunmisc.io.page.LockPage;
 import me.sunmisc.io.page.Page;
 
+import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.StreamSupport;
 
 public final class FreeSpaceMap implements Free {
     private static final int PAGE_SIZE = 32;
 
-    private final AtomicInteger tail = new AtomicInteger();
     private final Alloc alloc;
-    private final LoadingCache<Integer, Page> striped;
+    private final LoadingCache<Long, Page> striped;
+    private final AtomicPage tail;
 
-    public FreeSpaceMap(Alloc alloc) {
+    public FreeSpaceMap(Alloc alloc) throws IOException {
         this.alloc = alloc;
-        this.striped =  Caffeine
+        this.tail = new LockPage(alloc.alloc(2));
+        this.striped = Caffeine
                 .newBuilder()
                 .maximumSize(100)
                 .expireAfterAccess(Duration.ofMinutes(5))
-                .build(off -> alloc.alloc(PAGE_SIZE));
+                .build(off -> alloc.take(new Location.LongLocation((off * (PAGE_SIZE * 2)) + 8)));
     }
 
     public static void main(String[] args) throws IOException {
-        FreeSpaceMap spaceMap = new FreeSpaceMap(new AllocHeapTable());
+        FreeSpaceMap spaceMap = new FreeSpaceMap(
+                new AllocIntPage(new AllocFileDefault(new File("kek.bin"))));
         for (long off = 0; off < 1024; off += 8) {
             spaceMap.add(List.of(new Location.LongLocation(off)));
         }
@@ -42,15 +47,15 @@ public final class FreeSpaceMap implements Free {
     @Override
     public Optional<Location> poll(int require) throws IOException {
         for (;;) {
-            final int v = tail.get();
+            final long v = tail.readLong(0);
             if (v <= 0) {
                 return Optional.empty();
-            } else if (tail.weakCompareAndSetVolatile(v, v - 1)) {
-                int k = Math.floorDiv(v - 1, PAGE_SIZE);
-                int q = (v - 1) % PAGE_SIZE;
+            } else if (tail.caeLong(0, v, v - 1) == v) {
+                long k = Math.floorDiv(v - 1, PAGE_SIZE);
+                int q = Math.toIntExact((v - 1) % PAGE_SIZE);
                 return Optional.of(
                         new Location.LongLocation(
-                                striped.get(k).readInt(q)
+                                striped.get(k).readLong(q)
                         )
                 );
             }
@@ -64,17 +69,27 @@ public final class FreeSpaceMap implements Free {
                         .stream(locations.spliterator(), false)
                         .count()
         );
-        int v = tail.getAndAdd(count);
+        long v = Math.max(0, tail.computeLong(0, q -> Math.max(0, q) + count));
         for (Location loc : locations) {
-            int k = Math.floorDiv(v, PAGE_SIZE);
-            int q = v % PAGE_SIZE;
-            striped.get(k).writeInt(q, (int) loc.offset());
+            long k = Math.floorDiv(v, PAGE_SIZE);
+            int q = Math.toIntExact(v % PAGE_SIZE);
+            striped.get(k, integer -> {
+                try {
+                    return alloc.alloc(PAGE_SIZE * 2);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }).writeLong(q, (int) loc.offset());
             v++;
         }
     }
 
     @Override
     public int size() {
-        return tail.get();
+        try {
+            return Math.toIntExact(tail.readLong(0));
+        } catch (IOException e) {
+            return  0;
+        }
     }
 }

@@ -27,7 +27,7 @@ public final class AllocIntPage implements Alloc {
 
     @Override
     public Page take(final Location location) throws IOException {
-        return this.origin.take(location);
+        return new IntAlignedPage(this.origin.take(location));
     }
 
     @Override

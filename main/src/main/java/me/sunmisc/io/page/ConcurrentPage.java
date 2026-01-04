@@ -77,28 +77,28 @@ public final class ConcurrentPage implements AtomicPage {
     }
 
     @Override
-    public boolean casLong(final int index, final long expectedValue, final long newValue) throws IOException {
+    public long caeLong(final int index, final long expectedValue, final long newValue) throws IOException {
         final Lock lock = this.cellLock(index);
         try {
-            if (this.origin.readLong(index) == expectedValue) {
+            final long witness = this.origin.readLong(index);
+            if (witness == expectedValue) {
                 this.origin.writeLong(index, newValue);
-                return true;
             }
-            return false;
+            return witness;
         } finally {
             lock.unlock();
         }
     }
 
     @Override
-    public boolean casInt(final int index, final int expectedValue, final int newValue) throws IOException {
+    public int caeInt(final int index, final int expectedValue, final int newValue) throws IOException {
         final Lock lock = this.cellLock(index);
         try {
-            if (this.origin.readInt(index) == expectedValue) {
+            final int witness = this.origin.readInt(index);
+            if (witness == expectedValue) {
                 this.origin.writeInt(index, newValue);
-                return true;
             }
-            return false;
+            return witness;
         } finally {
             lock.unlock();
         }

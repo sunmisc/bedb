@@ -52,7 +52,7 @@ public class AtomicVsLockCasArray {
         int v;
         do {
             v = this.page.readInt(i);
-        } while (!this.page.casInt(i, v, v + i));
+        } while (this.page.caeInt(i, v, v + i) != v);
         return v;
     }
 
@@ -63,7 +63,7 @@ public class AtomicVsLockCasArray {
         do {
             Thread.onSpinWait();
             v = this.page.readInt(i);
-        } while (!this.page.casInt(i, v, v + i));
+        } while (this.page.caeInt(i, v, v + i) != v);
         return v;
     }
 }
