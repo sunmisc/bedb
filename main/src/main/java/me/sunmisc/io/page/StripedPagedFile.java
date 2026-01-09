@@ -10,7 +10,7 @@ import java.io.RandomAccessFile;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 
-public final class StripedPagedFile implements Page, AutoCloseable {
+public final class StripedPagedFile implements Page {
     private static final int PAGE_SIZE = 4096 * 2;
     private final RandomAccessFile raf;
     private final long offset;
@@ -27,6 +27,11 @@ public final class StripedPagedFile implements Page, AutoCloseable {
                 .build(off -> {
                     final int len = off * PAGE_SIZE;
                     final long start = offset + len;
+              /*      return new FFilePage(
+                            origin,
+                            start,
+                            Math.min(PAGE_SIZE, size - len)
+                    );*/
                     return new BufferPage(
                             start,
                             raf.getChannel().map(
@@ -76,10 +81,5 @@ public final class StripedPagedFile implements Page, AutoCloseable {
     @Override
     public int length() {
         return this.size;
-    }
-
-    @Override
-    public void close() throws Exception {
-        this.raf.close();
     }
 }

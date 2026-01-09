@@ -1,6 +1,6 @@
 package me.sunmisc.io.alloc;
 
-import me.sunmisc.io.IntAlignedPage;
+import me.sunmisc.io.page.IntAlignedPage;
 import me.sunmisc.io.Location;
 import me.sunmisc.io.page.Page;
 

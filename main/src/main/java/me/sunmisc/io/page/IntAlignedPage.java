@@ -1,9 +1,8 @@
-package me.sunmisc.io;
-
-import me.sunmisc.io.page.Page;
+package me.sunmisc.io.page;
 
 import java.io.IOException;
 
+@Deprecated
 public final class IntAlignedPage implements Page {
     private final Page origin;
 
