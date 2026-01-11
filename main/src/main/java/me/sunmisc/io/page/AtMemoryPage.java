@@ -4,25 +4,22 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.ValueLayout;
-import java.lang.invoke.VarHandle;
-import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 import java.util.Arrays;
 
 import static java.lang.foreign.ValueLayout.*;
 import static java.nio.file.StandardOpenOption.*;
 
-public final class FFilePage implements AtomicPage {
+public final class AtMemoryPage implements AtomicPage {
     private final MemorySegment segment;
     private final long offset;
 
-    public FFilePage(final MemorySegment segment, final long offset) {
+    public AtMemoryPage(final MemorySegment segment, final long offset) {
         this.segment = segment;
         this.offset = offset;
     }
 
-    public FFilePage(final File origin, final long offset, final int size) throws IOException {
+    public AtMemoryPage(final File origin, final long offset, final int size) throws IOException {
         MemorySegment segment;
         try (final FileChannel channel = FileChannel.open(origin.toPath(), CREATE, READ, WRITE)) {
             segment = channel.map(
@@ -34,19 +31,21 @@ public final class FFilePage implements AtomicPage {
         this(segment, offset);
     }
 
-    public static void main(String[] args) throws IOException {
-        Page page = new FFilePage(Arena.ofAuto().allocate(128), 0);
-        page.writeInt(0, 8);
-        page.writeInt(4, 22);
-        page.writeLong(8, 11);
-        page.writeInt(16, 5);
-        page.writeInt(20, 33);
-        page.writeLong(24, 99);
-        System.out.println(page);
-        System.out.println(page.readInt(0));
-        System.out.println(page.readInt(4));
-        System.out.println(page.readLong(8));
-        System.out.println(page.readLong(24));
+    @Deprecated
+    public void writeInt(int index, int value) throws IOException {
+        JAVA_INT.varHandle().setVolatile(segment, index, value);
+    }
+
+    @Override
+    public boolean weakCompareAndSet(int index, long expected, long value) {
+        return JAVA_LONG
+                .varHandle()
+                .weakCompareAndSet(segment, index, expected, value);
+    }
+
+    @Deprecated
+    public int readInt(int index) throws IOException {
+        return (int) JAVA_INT.varHandle().getVolatile(segment, index);
     }
 
     @Override
@@ -80,17 +79,6 @@ public final class FFilePage implements AtomicPage {
                         value
                 );
     }
-    @Override
-    public boolean weakCompareAndSet(final int index, final long expected, final long value) {
-        return JAVA_LONG
-                .varHandle()
-                .weakCompareAndSet(
-                        segment,
-                        index,
-                        expected,
-                        value
-                );
-    }
 
     @Override
     public int length() {
@@ -104,7 +92,6 @@ public final class FFilePage implements AtomicPage {
 
     @Override
     public String toString() {
-        return Arrays.toString(segment.toArray(ValueLayout.JAVA_BYTE));
+        return Arrays.toString(segment.toArray(JAVA_BYTE));
     }
 }
-

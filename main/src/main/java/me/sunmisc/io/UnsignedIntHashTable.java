@@ -94,9 +94,9 @@ public final class UnsignedIntHashTable implements Table {
         return this.table.offset();
     }
 
-    private void insert(final int index, final int key, final int value) throws IOException {
+    private void insert(final int index, final int key, final int value) {
         final long packed = ((long) key << 32) | (value & 0xFFFFFFFFL);
-        this.table.writeLong(index, packed);
+        this.table.put(index, packed);
     }
 
     private Map.Entry<Integer, Integer> unpacked(final long word) {

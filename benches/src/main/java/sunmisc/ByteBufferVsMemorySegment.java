@@ -1,5 +1,6 @@
 package sunmisc;
 
+import me.sunmisc.io.page.AtMemoryPage;
 import me.sunmisc.io.page.BufferPage;
 import me.sunmisc.io.page.FFilePage;
 import me.sunmisc.io.page.Page;
@@ -28,8 +29,9 @@ public class ByteBufferVsMemorySegment {
     @Param
     private Kind kind;
     private Page page;
+    public volatile int index;
 
-    public enum Kind { BUFFER, FOREIGN }
+    public enum Kind { ATOMIC, PLAIN }
 
 
     public static void main(final String[] args) throws RunnerException {
@@ -42,34 +44,33 @@ public class ByteBufferVsMemorySegment {
     @Setup
     public void init() {
         this.page = switch (this.kind) {
-            case BUFFER -> new BufferPage(0, ByteBuffer.allocate(SIZE));
-            case FOREIGN -> new FFilePage(Arena.global().allocate(SIZE), 0);
+            case ATOMIC -> new AtMemoryPage(Arena.ofAuto().allocate(SIZE), 0);
+            case PLAIN -> new FFilePage(Arena.ofAuto().allocate(SIZE), 0);
         };
+        index = 8;
     }
 
-    @Benchmark
+ /*   @Benchmark
     public long read64() throws IOException {
-        return page.readLong(0);
+        return page.readLong(index);
     }
 
     @Benchmark
     public long write64() throws IOException {
         final long now = System.currentTimeMillis();
-        int n = ThreadLocalRandom.current().nextInt(0, 8);
-        page.writeLong(n, now);
+        page.writeLong(index, now);
         return now;
-    }
+    }*/
 
     @Benchmark
     public int read32() throws IOException {
-        return page.readInt(0);
+        return page.readInt(index);
     }
 
     @Benchmark
     public int write32() throws IOException {
         final int now = (int)System.currentTimeMillis();
-        int n = ThreadLocalRandom.current().nextInt(0, 8);
-        page.writeInt(n, now);
+        page.writeInt(index, now);
         return now;
     }
 }
